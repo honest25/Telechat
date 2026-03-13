@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleGram-Pro V3 | Full App Prototype</title>
+    <style>
+        :root {
+            --primary: #2481cc;
+            --bg: #ffffff;
+            --sidebar-bg: #f4f4f5;
+            --text: #1c1c1c;
+            --msg-in: #f1f1f1;
+            --msg-out: #effdde;
+            --border: #e0e0e0;
+            --glass: rgba(255, 255, 255, 0.85);
+            --shadow: 0 8px 30px rgba(0,0,0,0.12);
+            --danger: #e53935;
+            --success: #4caf50;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --sidebar-bg: #1a1a1b;
+            --text: #e0e0e0;
+            --msg-in: #2b2b2b;
+            --msg-out: #3d6a97;
+            --border: #333333;
+            --glass: rgba(15, 15, 15, 0.85);
+            --shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: background 0.3s; }
+
+        /* --- AUTHENTICATION SCREEN --- */
+        #auth-view {
+            position: fixed; inset: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') center/cover;
+        }
+        .auth-card {
+            background: var(--glass); backdrop-filter: blur(20px);
+            padding: 40px; border-radius: 20px; width: 100%; max-width: 400px;
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+            text-align: center; display: flex; flex-direction: column; gap: 20px;
+        }
+        .auth-card h2 { color: var(--text); margin-bottom: 10px; }
+        
+        .btn-google { background: white; color: #444; border: 1px solid #ddd; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+        .btn-google:hover { background: #f8f8f8; }
+        
+        .divider { display: flex; align-items: center; text-align: center; color: #888; font-size: 12px; margin: 10px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); margin: 0 10px; }
+
+        .phone-input-group { display: flex; gap: 10px; }
+        .phone-input-group select { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; }
+        .phone-input-group input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; }
+        
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
+        .btn-primary:hover { background: #1c6ab0; }
+
+        /* --- MAIN APP LAYOUT --- */
+        #app-view {
+            display: none; /* Hidden until logged in */
+            grid-template-columns: 80px 320px 1fr 300px;
+            height: 100vh;
+        }
+
+        /* Nav Rail */
+        .nav-rail { background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 15px 0; gap: 20px; z-index: 50; }
+        .nav-icon { width: 50px; height: 50px; border-radius: 15px; background: var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; font-size: 20px; }
+        .nav-icon:hover, .nav-icon.active { background: var(--primary); color: white; border-radius: 12px; }
+
+        /* Sidebar & Main Stage */
+        .sidebar-list { background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .list-header { padding: 15px; border-bottom: 1px solid var(--border); }
+        .search-box { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--sidebar-bg); color: var(--text); outline: none; }
+        .chat-scroll { flex: 1; overflow-y: auto; }
+        .chat-card { padding: 12px 15px; display: flex; gap: 12px; cursor: pointer; border-bottom: 1px solid var(--border); }
+        .chat-card:hover { background: var(--sidebar-bg); }
+        .chat-card.active { background: rgba(36, 129, 204, 0.1); }
+        
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(45deg, var(--primary), #0088cc); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; position: relative; flex-shrink: 0; }
+        .status-dot { width: 12px; height: 12px; border: 2px solid var(--bg); background: var(--success); border-radius: 50%; position: absolute; bottom: 2px; right: 2px; }
+
+        .main-stage { display: flex; flex-direction: column; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png') center/cover; }
+        .chat-header { background: var(--glass); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); z-index: 10; }
+        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 65%; padding: 10px 14px; border-radius: 18px; font-size: 14px; position: relative; box-shadow: var(--shadow); }
+        .m-in { align-self: flex-start; background: var(--msg-in); border-bottom-left-radius: 4px; }
+        .m-out { align-self: flex-end; background: var(--msg-out); border-bottom-right-radius: 4px; }
+
+        .input-bar { background: var(--bg); padding: 10px 20px; display: flex; align-items: center; gap: 15px; border-top: 1px solid var(--border); }
+        .input-field { flex: 1; padding: 12px; border-radius: 25px; border: none; background: var(--sidebar-bg); color: var(--text); outline: none; }
+
+        /* Right Panel */
+        .info-panel { background: var(--bg); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+        .btn-round { width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: transparent; font-size: 20px; color: var(--primary); }
+        .btn-round:hover { background: var(--sidebar-bg); }
+
+        /* --- MULTI-USER WEBRTC GRID --- */
+        #call-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200; display: none; flex-direction: column; padding: 20px; color: white; }
+        .call-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; margin-bottom: 20px; }
+        
+        .video-grid { flex: 1; display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-content: center; justify-content: center; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        .video-cell { background: #222; border-radius: 16px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); aspect-ratio: 16/9; }
+        .video-cell video { width: 100%; height: 100%; object-fit: cover; }
+        .participant-name { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.6); padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; backdrop-filter: blur(4px); }
+        
+        /* Mock remote participant styling */
+        .mock-avatar { width: 100px; height: 100px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 40px; color: white; box-shadow: 0 0 0 0 rgba(36, 129, 204, 0.7); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(36, 129, 204, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(36, 129, 204, 0); } 100% { box-shadow: 0 0 0 0 rgba(36, 129, 204, 0); } }
+
+        .call-controls { display: flex; justify-content: center; gap: 20px; padding: 20px; }
+        .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; background: #333; transition: 0.2s; }
+        .ctrl-btn:hover { background: #444; }
+        .ctrl-btn.hangup { background: var(--danger); }
+        .ctrl-btn.hangup:hover { background: #b71c1c; }
+
+    </style>
+</head>
+<body data-theme="dark">
+
+<div id="auth-view">
+    <div class="auth-card">
+        <div class="avatar" style="margin: 0 auto; width: 60px; height: 60px; font-size: 24px;">✈️</div>
+        <h2>TeleGram-Pro</h2>
+        <p style="color: #888; font-size: 14px;">Sign in to sync your encrypted chats</p>
+        
+        <button class="btn-google" onclick="handleLogin('Google Account')">
+            <span style="font-size: 18px;">G</span> Continue with Google
+        </button>
+        
+        <div class="divider">OR</div>
+        
+        <div class="phone-input-group">
+            <select id="countryCode">
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+81">🇯🇵 +81</option>
+            </select>
+            <input type="tel" id="phoneNum" placeholder="Phone Number">
+        </div>
+        
+        <button class="btn-primary" onclick="handlePhoneLogin()">Send Secure Code</button>
+    </div>
+</div>
+
+<div id="app-view">
+    <nav class="nav-rail">
+        <div class="nav-icon active" title="Chats">💬</div>
+        <div class="nav-icon" onclick="alert('Contacts logic here')" title="Contacts">👥</div>
+        <div class="nav-icon" onclick="toggleTheme()" title="Toggle Theme">🌓</div>
+        <div class="nav-icon" style="margin-top: auto; background: var(--danger);" onclick="logout()" title="Logout">🚪</div>
+    </nav>
+
+    <aside class="sidebar-list">
+        <div class="list-header">
+            <h3 id="appUserName">Loading...</h3>
+            <input type="text" class="search-box" placeholder="Search chats..." style="margin-top: 10px;">
+        </div>
+        <div class="chat-scroll" id="chatList"></div>
+    </aside>
+
+    <main class="main-stage">
+        <header class="chat-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="avatar" id="headerAvatar">?</div>
+                <div>
+                    <strong id="headerName">Select a Chat</strong>
+                    <div style="font-size: 12px; color: var(--success);" id="headerStatus">Online</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-round" onclick="startGridCall()" title="Start Video Call">📹</button>
+                <button class="btn-round" title="Call Info">ℹ️</button>
+            </div>
+        </header>
+
+        <div class="messages-container" id="msgContainer"></div>
+
+        <div class="input-bar">
+            <button class="btn-round">📎</button>
+            <input type="text" id="mainInput" class="input-field" placeholder="Write a message...">
+            <button class="btn-round" id="sendBtn" style="color: var(--primary);">➤</button>
+        </div>
+    </main>
+
+    <section class="info-panel" id="infoPanel">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div class="avatar" style="width: 80px; height: 80px; font-size: 28px; margin: 0 auto 10px;" id="infoAvatar">?</div>
+            <h2 id="infoName">User</h2>
+            <p style="color: var(--primary); font-size: 13px;" id="infoBio">Bio</p>
+        </div>
+        <div id="groupMembersList" style="display: flex; flex-direction: column; gap: 10px;">
+            </div>
+    </section>
+</div>
+
+<div id="call-modal">
+    <div class="call-header">
+        <h2 id="callGroupName">Secure Group Call</h2>
+        <span style="background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 12px;">🔒 End-to-End Encrypted</span>
+    </div>
+    
+    <div class="video-grid" id="videoGrid">
+        <div class="video-cell">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="participant-name">You (Local)</div>
+        </div>
+        </div>
+
+    <div class="call-controls">
+        <button class="ctrl-btn" onclick="alert('Microphone toggled')">🎤</button>
+        <button class="ctrl-btn" onclick="alert('Camera toggled')">📷</button>
+        <button class="ctrl-btn" onclick="alert('Screen share initiated')">💻</button>
+        <button class="ctrl-btn hangup" onclick="endCall()">📞</button>
+    </div>
+</div>
+
+<script>
+    /* --- STATE & DATA --- */
+    const state = {
+        currentUser: null,
+        activeChatId: null,
+        localStream: null,
+        chats: [
+            { 
+                id: 1, name: "Crypto Alpha Group", avatar: "CA", type: "group", status: "3 members", bio: "Main dev discussion",
+                members: [
+                    { id: 0, name: "You" },
+                    { id: 101, name: "Alice Hacker", avatar: "AH" },
+                    { id: 102, name: "Bob Node", avatar: "BN" }
+                ]
+            },
+            { id: 2, name: "AI Assistant", avatar: "AI", type: "bot", status: "online", bio: "Always here to help." },
+            { id: 3, name: "Sarah Miller", avatar: "SM", type: "contact", status: "last seen 5m ago", bio: "Designer" }
+        ]
+    };
+
+    /* --- AUTHENTICATION LOGIC --- */
+    function checkAuth() {
+        const savedUser = localStorage.getItem('tg_user');
+        if (savedUser) {
+            state.currentUser = JSON.parse(savedUser);
+            document.getElementById('auth-view').style.display = 'none';
+            document.getElementById('app-view').style.display = 'grid';
+            document.getElementById('appUserName').innerText = state.currentUser.name;
+            initApp();
+        } else {
+            document.getElementById('auth-view').style.display = 'flex';
+            document.getElementById('app-view').style.display = 'none';
+        }
+    }
+
+    function handleLogin(name) {
+        state.currentUser = { id: Date.now(), name: name };
+        localStorage.setItem('tg_user', JSON.stringify(state.currentUser));
+        checkAuth(); // Re-evaluate auth state to switch views
+    }
+
+    function handlePhoneLogin() {
+        const code = document.getElementById('countryCode').value;
+        const num = document.getElementById('phoneNum').value;
+        if (num.length < 7) {
+            alert("Please enter a valid phone number.");
+            return;
+        }
+        handleLogin(`${code} ${num}`);
+    }
+
+    function logout() {
+        localStorage.removeItem('tg_user');
+        window.location.reload(); // Quick reset of all JS state
+    }
+
+    /* --- APP INITIALIZATION --- */
+    function initApp() {
+        renderChatList();
+        selectChat(1); // Auto-open the group chat
+        
+        document.getElementById('sendBtn').onclick = sendMessage;
+        document.getElementById('mainInput').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+    }
+
+    /* --- UI ROUTING & MESSAGING --- */
+    function renderChatList() {
+        const list = document.getElementById('chatList');
+        list.innerHTML = state.chats.map(chat => `
+            <div class="chat-card ${state.activeChatId === chat.id ? 'active' : ''}" onclick="selectChat(${chat.id})">
+                <div class="avatar">${chat.avatar}</div>
+                <div style="flex: 1;">
+                    <strong>${chat.name}</strong>
+                    <div style="font-size: 13px; color: #888;">Tap to view</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function selectChat(id) {
+        state.activeChatId = id;
+        const chat = state.chats.find(c => c.id === id);
+        
+        document.getElementById('headerName').innerText = chat.name;
+        document.getElementById('headerStatus').innerText = chat.status;
+        document.getElementById('headerAvatar').innerText = chat.avatar;
+        document.getElementById('infoName').innerText = chat.name;
+        document.getElementById('infoAvatar').innerText = chat.avatar;
+        document.getElementById('infoBio').innerText = chat.bio;
+
+        // Render members if group
+        const membersList = document.getElementById('groupMembersList');
+        if (chat.type === 'group') {
+            membersList.innerHTML = chat.members.map(m => `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--sidebar-bg); border-radius: 8px;">
+                    <div class="avatar" style="width:30px; height:30px; font-size:12px;">${m.avatar || 'U'}</div>
+                    <span>${m.name}</span>
+                </div>
+            `).join('');
+        } else {
+            membersList.innerHTML = '';
+        }
+
+        renderChatList();
+        document.getElementById('msgContainer').innerHTML = `<div style="text-align: center; color: #888; font-size: 12px;">Encrypted chat started.</div>`;
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('mainInput');
+        if(!input.value.trim()) return;
+        
+        const div = document.createElement('div');
+        div.className = `message m-out`;
+        div.innerHTML = `${input.value} <div style="font-size: 10px; text-align: right; opacity: 0.6;">Just now</div>`;
+        document.getElementById('msgContainer').appendChild(div);
+        
+        input.value = '';
+    }
+
+    /* --- MULTI-USER WEBRTC GRID LOGIC --- */
+    async function startGridCall() {
+        const chat = state.chats.find(c => c.id === state.activeChatId);
+        document.getElementById('callGroupName').innerText = `${chat.name} Call`;
+        document.getElementById('call-modal').style.display = 'flex';
+
+        // 1. Fetch Local Camera
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = stream;
+            state.localStream = stream;
+        } catch (error) {
+            console.error("Camera access denied.", error);
+        }
+
+        // 2. Build Grid dynamically based on group size
+        const grid = document.getElementById('videoGrid');
+        
+        // Remove old mock participants
+        document.querySelectorAll('.remote-mock').forEach(e => e.remove());
+
+        // If it's a group, inject fake remote streams
+        if (chat.type === 'group') {
+            chat.members.forEach(member => {
+                if (member.id === 0) return; // Skip "You" (Local camera handles this)
+                
+                const cell = document.createElement('div');
+                cell.className = 'video-cell remote-mock';
+                // Using animated CSS avatars to simulate active remote peers without needing external video files
+                cell.innerHTML = `
+                    <div class="mock-avatar">${member.avatar}</div>
+                    <div class="participant-name">${member.name}</div>
+                `;
+                grid.appendChild(cell);
+            });
+        }
+    }
+
+    function endCall() {
+        document.getElementById('call-modal').style.display = 'none';
+        if (state.localStream) {
+            state.localStream.getTracks().forEach(track => track.stop());
+            document.getElementById('localVideo').srcObject = null;
+            state.localStream = null;
+        }
+    }
+
+    function toggleTheme() {
+        const body = document.body;
+        body.setAttribute('data-theme', body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    }
+
+    // Bootstrap app
+    window.onload = checkAuth;
+</script>
+</body>
+</html>
