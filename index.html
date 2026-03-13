@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleLite - Ultimate Web Messenger</title>
+    <style>
+        :root {
+            --tg-blue: #2481cc;
+            --tg-bg: #ffffff;
+            --tg-sidebar: #ffffff;
+            --tg-chat-bg: #e7ebf0;
+            --tg-text: #000000;
+            --tg-msg-in: #ffffff;
+            --tg-msg-out: #effdde;
+            --tg-gray: #707579;
+            --tg-border: #dfe1e5;
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --tg-bg: #1c1c1c;
+            --tg-sidebar: #212121;
+            --tg-chat-bg: #0f0f0f;
+            --tg-text: #ffffff;
+            --tg-msg-in: #2b2b2b;
+            --tg-msg-out: #3d6a97;
+            --tg-border: #333333;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background: var(--tg-bg); color: var(--tg-text); height: 100vh; overflow: hidden; }
+
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 350px;
+            border-right: 1px solid var(--tg-border);
+            display: flex;
+            flex-direction: column;
+            background: var(--tg-sidebar);
+            z-index: 10;
+        }
+
+        .sidebar-header { padding: 15px; display: flex; align-items: center; gap: 15px; }
+        .search-container { padding: 0 15px 10px; }
+        .search-bar {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid var(--tg-border);
+            background: var(--tg-chat-bg);
+            color: var(--tg-text);
+            outline: none;
+        }
+
+        .chat-list { flex: 1; overflow-y: auto; }
+        .chat-item {
+            display: flex;
+            padding: 12px 15px;
+            cursor: pointer;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition);
+        }
+        .chat-item:hover, .chat-item.active { background: var(--tg-blue); color: white; }
+        .chat-item:hover .chat-meta, .chat-item.active .chat-meta { color: #e0e0e0; }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #888;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .online-dot {
+            width: 12px;
+            height: 12px;
+            background: #4caf50;
+            border: 2px solid var(--tg-sidebar);
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
+
+        .chat-info { flex: 1; overflow: hidden; }
+        .chat-name-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .chat-last-msg { font-size: 0.9rem; color: var(--tg-gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item.active .chat-last-msg { color: #fff; }
+
+        /* CHAT WINDOW */
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--tg-chat-bg);
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 10px 20px;
+            background: var(--tg-sidebar);
+            border-bottom: 1px solid var(--tg-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .message-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .msg {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            position: relative;
+            font-size: 0.95rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .msg-in { align-self: flex-start; background: var(--tg-msg-in); border-bottom-left-radius: 2px; }
+        .msg-out { align-self: flex-end; background: var(--tg-msg-out); border-bottom-right-radius: 2px; }
+
+        .msg-time {
+            font-size: 0.7rem;
+            color: var(--tg-gray);
+            float: right;
+            margin-top: 4px;
+            margin-left: 8px;
+        }
+
+        /* INPUT AREA */
+        .input-area {
+            padding: 10px 20px;
+            background: var(--tg-sidebar);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .input-wrapper {
+            flex: 1;
+            background: var(--tg-chat-bg);
+            border-radius: 20px;
+            padding: 5px 15px;
+            display: flex;
+            align-items: center;
+        }
+        .message-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 8px;
+            outline: none;
+            color: var(--tg-text);
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--tg-blue);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .typing-indicator { font-size: 0.8rem; color: var(--tg-blue); font-style: italic; margin-bottom: 10px; display: none; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: absolute; left: 0; transition: transform 0.3s; }
+            .sidebar.hidden { transform: translateX(-100%); }
+            .main-chat { width: 100%; }
+        }
+
+        .badge {
+            background: #4caf50;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="avatar" id="myAvatar">ME</div>
+            <div style="flex:1"><strong>My Profile</strong></div>
+            <button class="btn-icon" onclick="toggleTheme()">🌓</button>
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-bar" placeholder="Search chats..." id="chatSearch">
+        </div>
+        <div class="chat-list" id="chatList">
+            </div>
+    </aside>
+
+    <main class="main-chat">
+        <header class="chat-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button class="btn-icon" id="backBtn" style="display: none;">⬅</button>
+                <div class="avatar" id="headerAvatar">?</div>
+                <div>
+                    <div id="activeChatName"><strong>Select a chat</strong></div>
+                    <div id="activeChatStatus" style="font-size: 0.8rem; color: var(--tg-gray);">online</div>
+                </div>
+            </div>
+            <div class="btn-icon">⋮</div>
+        </header>
+
+        <div class="message-area" id="messageArea">
+            <div style="margin: auto; color: var(--tg-gray);">Welcome to TeleLite</div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator" style="padding-left: 20px;">AI is typing...</div>
+
+        <div class="input-area">
+            <button class="btn-icon">📎</button>
+            <div class="input-wrapper">
+                <input type="text" class="message-input" id="msgInput" placeholder="Write a message...">
+                <button class="btn-icon">😊</button>
+            </div>
+            <button class="btn-icon" id="sendBtn">➤</button>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- DATABASE & STATE ---
+    const DB_NAME = "TeleLiteDB";
+    let state = {
+        currentUser: { id: 0, name: "Me", avatar: "ME" },
+        chats: [
+            { id: 1, name: "AI Assistant", avatar: "AI", lastMsg: "How can I help you today?", unread: 0, type: 'bot' },
+            { id: 2, name: "Project Group", avatar: "PG", lastMsg: "John: Let's finish this", unread: 2, type: 'group' },
+            { id: 3, name: "Mom ❤️", avatar: "M", lastMsg: "Don't forget to eat!", unread: 0, type: 'contact' }
+        ],
+        messages: JSON.parse(localStorage.getItem('messages')) || {
+            1: [{ senderId: 1, text: "Hello! I am your local AI simulation.", time: "10:00 AM" }],
+            2: [{ senderId: 5, text: "Let's finish this code", time: "09:30 AM" }],
+            3: [{ senderId: 3, text: "Don't forget to eat!", time: "Yesterday" }]
+        },
+        activeChatId: null,
+        theme: localStorage.getItem('theme') || 'light'
+    };
+
+    // --- INITIALIZATION ---
+    function init() {
+        document.body.setAttribute('data-theme', state.theme);
+        renderChatList();
+        setupEventListeners();
+    }
+
+    // --- UI RENDERING ---
+    function renderChatList() {
+        const list = document.getElementById('chatList');
+        list.innerHTML = state.chats.map(chat => `
+            <div class="chat-item ${state.activeChatId === chat.id ? 'active' : ''}" onclick="selectChat(${chat.id})">
+                <div class="avatar">${chat.avatar}${chat.type !== 'group' ? '<div class="online-dot"></div>' : ''}</div>
+                <div class="chat-info">
+                    <div class="chat-name-row">
+                        <strong>${chat.name}</strong>
+                        <span class="chat-meta" style="font-size: 0.7rem;">12:00</span>
+                    </div>
+                    <div class="chat-last-msg">${chat.lastMsg}</div>
+                </div>
+                ${chat.unread ? `<span class="badge">${chat.unread}</span>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function selectChat(id) {
+        state.activeChatId = id;
+        const chat = state.chats.find(c => c.id === id);
+        chat.unread = 0;
+        
+        document.getElementById('activeChatName').innerText = chat.name;
+        document.getElementById('headerAvatar').innerText = chat.avatar;
+        document.getElementById('headerAvatar').style.background = chat.type === 'group' ? '#f39c12' : '#2481cc';
+        
+        renderMessages();
+        renderChatList();
+        
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.add('hidden');
+            document.getElementById('backBtn').style.display = 'block';
+        }
+    }
+
+    function renderMessages() {
+        const area = document.getElementById('messageArea');
+        const msgs = state.messages[state.activeChatId] || [];
+        
+        area.innerHTML = msgs.map(m => `
+            <div class="msg ${m.senderId === 0 ? 'msg-out' : 'msg-in'}">
+                ${m.text}
+                <span class="msg-time">${m.time} ${m.senderId === 0 ? '✓✓' : ''}</span>
+            </div>
+        `).join('');
+        area.scrollTop = area.scrollHeight;
+    }
+
+    // --- FEATURES ---
+    function sendMessage() {
+        const input = document.getElementById('msgInput');
+        const text = input.value.trim();
+        if (!text || !state.activeChatId) return;
+
+        const msg = { senderId: 0, text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+        
+        if (!state.messages[state.activeChatId]) state.messages[state.activeChatId] = [];
+        state.messages[state.activeChatId].push(msg);
+        
+        // Update last message in sidebar
+        const chat = state.chats.find(c => c.id === state.activeChatId);
+        chat.lastMsg = text;
+
+        input.value = '';
+        renderMessages();
+        renderChatList();
+        saveData();
+
+        // Simulate Bot Reply
+        if (chat.type === 'bot') {
+            simulateBotResponse();
+        }
+    }
+
+    function simulateBotResponse() {
+        const indicator = document.getElementById('typingIndicator');
+        indicator.style.display = 'block';
+        
+        setTimeout(() => {
+            const botMsg = { 
+                senderId: 1, 
+                text: "I received your message! This is a simulated local response. 🚀", 
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+            };
+            state.messages[1].push(botMsg);
+            indicator.style.display = 'none';
+            renderMessages();
+            saveData();
+        }, 1500);
+    }
+
+    function toggleTheme() {
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', state.theme);
+        localStorage.setItem('theme', state.theme);
+    }
+
+    function saveData() {
+        localStorage.setItem('messages', JSON.stringify(state.messages));
+    }
+
+    function setupEventListeners() {
+        document.getElementById('sendBtn').onclick = sendMessage;
+        document.getElementById('msgInput').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+        document.getElementById('backBtn').onclick = () => {
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('backBtn').style.display = 'none';
+        };
+        
+        // Search Filter
+        document.getElementById('chatSearch').oninput = (e) => {
+            const val = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.chat-item');
+            items.forEach(item => {
+                const name = item.querySelector('strong').innerText.toLowerCase();
+                item.style.display = name.includes(val) ? 'flex' : 'none';
+            });
+        };
+    }
+
+    init();
+</script>
+</body>
+</html>
