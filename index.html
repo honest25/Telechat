@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleGram-Pro | Super App</title>
+    <style>
+        :root {
+            --primary: #2481cc;
+            --bg: #ffffff;
+            --sidebar-bg: #f4f4f5;
+            --text: #1c1c1c;
+            --msg-in: #f1f1f1;
+            --msg-out: #effdde;
+            --border: #e0e0e0;
+            --accent: #0088cc;
+            --glass: rgba(255, 255, 255, 0.8);
+            --shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --sidebar-bg: #1a1a1b;
+            --text: #e0e0e0;
+            --msg-in: #2b2b2b;
+            --msg-out: #3d6a97;
+            --border: #333333;
+            --glass: rgba(15, 15, 15, 0.8);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        /* --- LAYOUT --- */
+        .app-shell {
+            display: grid;
+            grid-template-columns: 80px 320px 1fr 300px;
+            height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Nav Rail (Discord Style) */
+        .nav-rail {
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 0;
+            gap: 20px;
+        }
+
+        .nav-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 15px;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 20px;
+        }
+        .nav-icon:hover, .nav-icon.active { background: var(--primary); color: white; border-radius: 12px; }
+
+        /* Left Sidebar (Chat List) */
+        .sidebar-list {
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-header { padding: 15px; border-bottom: 1px solid var(--border); }
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--sidebar-bg);
+            color: var(--text);
+        }
+
+        .chat-scroll { flex: 1; overflow-y: auto; }
+        .chat-card {
+            padding: 12px 15px;
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+        }
+        .chat-card:hover { background: var(--sidebar-bg); }
+        .chat-card.active { background: #e3f2fd; }
+        [data-theme="dark"] .chat-card.active { background: #1a2733; }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #2481cc, #0088cc);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+        }
+        .status-dot {
+            width: 12px; height: 12px; border: 2px solid var(--bg);
+            background: #4caf50; border-radius: 50%; position: absolute; bottom: 2px; right: 2px;
+        }
+
+        /* Center Panel */
+        .main-stage {
+            display: flex;
+            flex-direction: column;
+            background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-size: cover;
+        }
+
+        .chat-header {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 65%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            position: relative;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.2s ease;
+        }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } }
+
+        .m-in { align-self: flex-start; background: var(--msg-in); border-bottom-left-radius: 4px; }
+        .m-out { align-self: flex-end; background: var(--msg-out); border-bottom-right-radius: 4px; }
+
+        .encryption-tag {
+            text-align: center;
+            font-size: 11px;
+            color: #707579;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* Input Bar */
+        .input-bar {
+            background: var(--bg);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-top: 1px solid var(--border);
+        }
+        .input-field {
+            flex: 1;
+            padding: 12px;
+            border-radius: 25px;
+            border: none;
+            background: var(--sidebar-bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        /* Reels Section Overlay */
+        #reels-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .reel-video {
+            height: 80vh;
+            width: 450px;
+            background: #222;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        /* Right Panel */
+        .info-panel {
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* UI Helpers */
+        .hidden { display: none !important; }
+        .btn-round {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: none; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            background: transparent; font-size: 20px;
+            color: var(--primary);
+        }
+        .btn-round:hover { background: var(--sidebar-bg); }
+
+    </style>
+</head>
+<body data-theme="light">
+
+<div class="app-shell" id="appShell">
+    <nav class="nav-rail">
+        <div class="nav-icon active" onclick="switchView('chats')" title="Chats">💬</div>
+        <div class="nav-icon" onclick="switchView('reels')" title="Reels">📱</div>
+        <div class="nav-icon" onclick="openVoiceChannel()" title="Voice Channel">🔊</div>
+        <div class="nav-icon" onclick="toggleTheme()" title="Dark Mode">🌓</div>
+        <div style="margin-top: auto;" class="nav-icon" onclick="showSettings()">⚙️</div>
+    </nav>
+
+    <aside class="sidebar-list">
+        <div class="list-header">
+            <h3>TeleGram-Pro</h3>
+            <input type="text" class="search-box" placeholder="Search...">
+        </div>
+        <div class="chat-scroll" id="chatList">
+            </div>
+    </aside>
+
+    <main class="main-stage">
+        <header class="chat-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="avatar" id="headerAvatar">?</div>
+                <div>
+                    <strong id="headerName">Select a Chat</strong>
+                    <div style="font-size: 12px; color: #4caf50;" id="headerStatus">Online</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-round" onclick="initiateCall('video')">📹</button>
+                <button class="btn-round" onclick="initiateCall('voice')">📞</button>
+                <button class="btn-round">🔍</button>
+            </div>
+        </header>
+
+        <div class="messages-container" id="msgContainer">
+            <div class="encryption-tag">🔒 Messages are end-to-end encrypted with AES-256.</div>
+        </div>
+
+        <div id="typingArea" style="padding: 5px 25px; font-size: 12px; color: var(--primary); display: none;">AI is typing...</div>
+
+        <div class="input-bar">
+            <button class="btn-round">📎</button>
+            <input type="text" id="mainInput" class="input-field" placeholder="Message...">
+            <button class="btn-round" id="voiceBtn">🎤</button>
+            <button class="btn-round" id="sendBtn" style="color: var(--primary); font-weight: bold;">➤</button>
+        </div>
+    </main>
+
+    <section class="info-panel">
+        <div class="avatar" style="width: 100px; height: 100px; font-size: 32px; margin-bottom: 15px;">?</div>
+        <h2 id="infoName">User Name</h2>
+        <p style="color: var(--primary); margin-bottom: 20px;">@username</p>
+        <hr style="width: 100%; border: 0.5px solid var(--border); margin: 20px 0;">
+        <div style="text-align: left; width: 100%;">
+            <h4>Shared Media</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px;">
+                <div style="aspect-ratio: 1; background: #ddd; border-radius: 4px;"></div>
+                <div style="aspect-ratio: 1; background: #ddd; border-radius: 4px;"></div>
+                <div style="aspect-ratio: 1; background: #ddd; border-radius: 4px;"></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="reels-overlay">
+    <button onclick="switchView('chats')" style="position: absolute; top: 20px; left: 20px; color: white; background: none; border: 1px solid white; padding: 10px; border-radius: 5px; cursor: pointer;">← Back to Chats</button>
+    <div class="reel-video">
+        <div style="text-align: center;">
+            <p>🎥 Simulated Reel Content</p>
+            <small>Auto-playing vertical video simulation...</small>
+        </div>
+        <div style="position: absolute; right: 20px; bottom: 100px; display: flex; flex-direction: column; gap: 20px;">
+            <div style="cursor: pointer;">❤️ 12k</div>
+            <div style="cursor: pointer;">💬 450</div>
+            <div style="cursor: pointer;">✈️</div>
+        </div>
+    </div>
+</div>
+
+<div id="call-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px;">
+    <div class="avatar" style="width: 120px; height: 120px; font-size: 40px;">?</div>
+    <h1 id="callUser">User</h1>
+    <div id="callTimer">Calling...</div>
+    <div style="display: flex; gap: 30px;">
+        <button onclick="endCall()" style="background: #f44336; border: none; width: 60px; height: 60px; border-radius: 50%; font-size: 24px; cursor: pointer;">📞</button>
+        <button class="btn-round" style="background: #555; width: 60px; height: 60px;">🎤</button>
+    </div>
+</div>
+
+<script>
+    /* --- DATA & STATE MANAGEMENT --- */
+    const state = {
+        me: { id: 0, name: "Master Admin", avatar: "MA" },
+        chats: [
+            { id: 1, name: "AI Cyber-Bot", avatar: "AI", type: "bot", status: "online", bio: "Autonomous assistant", encrypted: true },
+            { id: 2, name: "Crypto Alpha Group", avatar: "CA", type: "group", status: "250 members", bio: "Main dev group" },
+            { id: 3, name: "Sarah Miller", avatar: "SM", type: "contact", status: "last seen 5m ago", bio: "UI Designer" }
+        ],
+        activeChatId: null,
+        db: null
+    };
+
+    // Simulated Encryption
+    const simpleEncrypt = (text) => btoa(unescape(encodeURIComponent(text)));
+    const simpleDecrypt = (hash) => decodeURIComponent(escape(atob(hash)));
+
+    /* --- INITIALIZATION --- */
+    function init() {
+        renderChatList();
+        setupEvents();
+        loadMessages(1); // Default to first chat
+        
+        // Auto-reply Bot Simulation
+        setInterval(simulateActivity, 15000);
+    }
+
+    function renderChatList() {
+        const list = document.getElementById('chatList');
+        list.innerHTML = state.chats.map(chat => `
+            <div class="chat-card ${state.activeChatId === chat.id ? 'active' : ''}" onclick="selectChat(${chat.id})">
+                <div class="avatar">${chat.avatar}${chat.type !== 'group' ? '<div class="status-dot"></div>' : ''}</div>
+                <div style="flex: 1; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <strong>${chat.name}</strong>
+                        <span style="font-size: 11px; color: #888;">14:20</span>
+                    </div>
+                    <div style="font-size: 13px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${chat.type === 'bot' ? 'Tap to start secure chat' : 'Shared a file'}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* --- CHAT ENGINE --- */
+    function selectChat(id) {
+        state.activeChatId = id;
+        const chat = state.chats.find(c => c.id === id);
+        
+        document.getElementById('headerName').innerText = chat.name;
+        document.getElementById('headerStatus').innerText = chat.status;
+        document.getElementById('headerAvatar').innerText = chat.avatar;
+        document.getElementById('infoName').innerText = chat.name;
+        
+        renderChatList();
+        loadMessages(id);
+    }
+
+    function loadMessages(chatId) {
+        const container = document.getElementById('msgContainer');
+        container.innerHTML = `<div class="encryption-tag">🔒 End-to-End Encrypted</div>`;
+        
+        const localData = JSON.parse(localStorage.getItem(`msgs_${chatId}`)) || [];
+        localData.forEach(msg => {
+            appendMessageUI(msg.sender === 0, simpleDecrypt(msg.content), msg.time);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function appendMessageUI(isOut, text, time) {
+        const container = document.getElementById('msgContainer');
+        const div = document.createElement('div');
+        div.className = `message ${isOut ? 'm-out' : 'm-in'}`;
+        div.innerHTML = `
+            ${text}
+            <div style="font-size: 10px; text-align: right; opacity: 0.6; margin-top: 4px;">
+                ${time} ${isOut ? '✓✓' : ''}
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('mainInput');
+        const text = input.value.trim();
+        if(!text || !state.activeChatId) return;
+
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // UI Update
+        appendMessageUI(true, text, time);
+        
+        // Save to LocalStorage (Encrypted)
+        const storageKey = `msgs_${state.activeChatId}`;
+        const history = JSON.parse(localStorage.getItem(storageKey)) || [];
+        history.push({ sender: 0, content: simpleEncrypt(text), time });
+        localStorage.setItem(storageKey, JSON.stringify(history));
+        
+        input.value = '';
+
+        // Bot Logic
+        if(state.chats.find(c => c.id === state.activeChatId).type === 'bot') {
+            triggerBotResponse();
+        }
+    }
+
+    function triggerBotResponse() {
+        const indicator = document.getElementById('typingArea');
+        indicator.style.display = 'block';
+        
+        setTimeout(() => {
+            indicator.style.display = 'none';
+            const responses = ["Understood.", "Processing your request...", "Encryption keys rotated.", "I'm here to help."];
+            const text = responses[Math.floor(Math.random()*responses.length)];
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            appendMessageUI(false, text, time);
+            
+            const history = JSON.parse(localStorage.getItem(`msgs_${state.activeChatId}`)) || [];
+            history.push({ sender: 1, content: simpleEncrypt(text), time });
+            localStorage.setItem(`msgs_${state.activeChatId}`, JSON.stringify(history));
+        }, 2000);
+    }
+
+    /* --- FEATURE NAVIGATION --- */
+    function switchView(view) {
+        document.getElementById('reels-overlay').style.display = (view === 'reels') ? 'flex' : 'none';
+    }
+
+    function toggleTheme() {
+        const body = document.body;
+        const current = body.getAttribute('data-theme');
+        body.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+    }
+
+    function initiateCall(type) {
+        const chat = state.chats.find(c => c.id === state.activeChatId);
+        document.getElementById('callUser').innerText = chat ? chat.name : "Unknown";
+        document.getElementById('call-modal').classList.remove('hidden');
+    }
+
+    function endCall() {
+        document.getElementById('call-modal').classList.add('hidden');
+    }
+
+    function openVoiceChannel() {
+        alert("Discord Voice Channel Simulation: Joining 'General'...");
+        // This would initiate a WebRTC session in a production environment
+    }
+
+    function simulateActivity() {
+        // Randomly update online statuses
+        console.log("Syncing with simulated backend...");
+    }
+
+    /* --- EVENT BINDING --- */
+    function setupEvents() {
+        document.getElementById('sendBtn').onclick = sendMessage;
+        document.getElementById('mainInput').onkeypress = (e) => {
+            if(e.key === 'Enter') sendMessage();
+        };
+    }
+
+    init();
+</script>
+</body>
+</html>
